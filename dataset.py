@@ -106,7 +106,7 @@ class DataSet(object):
     return self._images[start:end], self._labels[start:end], self._ids[start:end], self._cls[start:end]
 
 
-def read_train_sets(train_path, image_size, classes, test_size, validation_size):
+def read_train_sets(train_path, image_size, classes, test_size):
   class DataSets(object):
     pass
   data_sets = DataSets()
@@ -117,25 +117,19 @@ def read_train_sets(train_path, image_size, classes, test_size, validation_size)
   # Test : Train : Validation
   n = len(images)
   test_size = int(test_size * images.shape[0])
-  validation_size = n - int(validation_size * images.shape[0])
 
   test_images = images[:test_size]
   test_labels = labels[:test_size]
   test_ids = ids[:test_size]
   test_cls = cls[:test_size]
 
-  train_images = images[test_size:validation_size]
-  train_labels = labels[test_size:validation_size]
-  train_ids = ids[test_size:validation_size]
-  train_cls = cls[test_size:validation_size]
+  train_images = images[test_size:]
+  train_labels = labels[test_size:]
+  train_ids = ids[test_size:]
+  train_cls = cls[test_size:]
 
-  validation_images = images[validation_size:]
-  validation_labels = labels[validation_size:]
-  validation_ids = ids[validation_size:]
-  validation_cls = cls[validation_size:]
 
   data_sets.train = DataSet(train_images, train_labels, train_ids, train_cls)
-  data_sets.valid = DataSet(validation_images, validation_labels, validation_ids, validation_cls)
   data_sets.test = DataSet(test_images, test_labels, test_ids, test_cls)
 
   return data_sets

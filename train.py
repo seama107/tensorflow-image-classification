@@ -43,11 +43,11 @@ img_shape = (img_size, img_size)
 classes = ['Pool', 'NonPool']
 num_classes = len(classes)
 
+# n_epochs
+n_epochs = 100
+
 # batch size
 batch_size = 32
-
-# validation split
-validation_size = .16
 
 # test split
 test_size = .16
@@ -58,12 +58,14 @@ early_stopping = None  # use None if you don't want to implement early stoping
 data_path = '../pool-dataset'
 checkpoint_dir = os.path.join(os.getcwd(),"models")
 
-data = dataset.read_train_sets(data_path, img_size, classes, test_size=test_size, validation_size=validation_size)
-test_images, test_ids = data.test.images, data.test.ids
+data = dataset.read_train_sets(data_path, img_size, classes, test_size=test_size)
+
+n_train = len(data.train.labels)
+n_test = len(data.test.labels)
+
 print("Size of:")
-print("- Training-set:\t\t{}".format(len(data.train.labels)))
-print("- Test-set:\t\t{}".format(len(test_images)))
-print("- Validation-set:\t{}".format(len(data.valid.labels)))
+print("- Training-set:\t\t{}".format(n_train))
+print("- Test-set:\t\t{}".format(n_test))
 
 x = tf.placeholder(tf.float32, shape=[None, img_size_flat], name='x')
 x_image = tf.reshape(x, [-1, img_size, img_size, num_channels])
@@ -147,7 +149,7 @@ def optimize(num_iterations):
         # x_batch now holds a batch of images and
         # y_true_batch are the true labels for those images.
         x_batch, y_true_batch, _, cls_batch = data.train.next_batch(train_batch_size)
-        x_valid_batch, y_valid_batch, _, valid_cls_batch = data.valid.next_batch(train_batch_size)
+        x_valid_batch, y_valid_batch, _, valid_cls_batch = data.test.next_batch(train_batch_size)
 
         # Convert shape from [num examples, rows, columns, depth]
         # to [num examples, flattened image shape]
@@ -202,7 +204,7 @@ def optimize(num_iterations):
 def print_validation_accuracy():
 
     # Number of images in the test-set.
-    num_test = len(data.valid.images)
+    num_test = len(data.test.images)
 
     # Allocate an array for the predicted classes which
     # will be calculated in batches and filled into this array.
@@ -220,11 +222,11 @@ def print_validation_accuracy():
         j = min(i + batch_size, num_test)
 
         # Get the images from the test-set between index i and j.
-        images = data.valid.images[i:j, :].reshape(batch_size, img_size_flat)
+        images = data.test.images[i:j, :].reshape(batch_size, img_size_flat)
 
 
         # Get the associated labels.
-        labels = data.valid.labels[i:j, :]
+        labels = data.test.labels[i:j, :]
 
         # Create a feed-dict with these images and labels.
         feed_dict = {x: images,
@@ -237,7 +239,7 @@ def print_validation_accuracy():
         # end-index of the current batch.
         i = j
 
-    cls_true = np.array(data.valid.cls)
+    cls_true = np.array(data.test.cls)
     cls_pred = np.array([classes[x] for x in cls_pred])
 
     # Create a boolean array whether each image is correctly classified.
@@ -260,7 +262,10 @@ def print_validation_accuracy():
 session = tf.Session()
 session.run(tf.initialize_all_variables())
 train_batch_size = batch_size
+try:
+    optimize(n_train * n_epochs)
+except Exception as e:
+    print(e)
 
-optimize(680000)
 save_model(session)
 print_validation_accuracy()
