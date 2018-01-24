@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 from sklearn.utils import shuffle
 
+RAND_SEED = 1337
 
 def load_train(train_path, image_size, classes):
     images = []
@@ -33,29 +34,6 @@ def load_train(train_path, image_size, classes):
     cls = np.array(cls)
 
     return images, labels, ids, cls
-
-
-def load_test(test_path, image_size):
-  path = os.path.join(test_path, '*g')
-  files = sorted(glob.glob(path))
-
-  X_test = []
-  X_test_id = []
-  print("Reading test images")
-  for fl in files:
-      flbase = os.path.basename(fl)
-      img = cv2.imread(fl)
-      img = cv2.resize(img, (image_size, image_size), cv2.INTER_LINEAR)
-      X_test.append(img)
-      X_test_id.append(flbase)
-
-  ### because we're not creating a DataSet object for the test images, normalization happens here
-  X_test = np.array(X_test, dtype=np.uint8)
-  X_test = X_test.astype('float32')
-  X_test = X_test / 255
-
-  return X_test, X_test_id
-
 
 
 class DataSet(object):
@@ -128,33 +106,36 @@ class DataSet(object):
     return self._images[start:end], self._labels[start:end], self._ids[start:end], self._cls[start:end]
 
 
-def read_train_sets(train_path, image_size, classes, validation_size=0):
+def read_train_sets(train_path, image_size, classes, test_size, validation_size):
   class DataSets(object):
     pass
   data_sets = DataSets()
 
   images, labels, ids, cls = load_train(train_path, image_size, classes)
-  images, labels, ids, cls = shuffle(images, labels, ids, cls)  # shuffle the data
+  images, labels, ids, cls = shuffle(images, labels, ids, cls, random_state=RAND_SEED)  # shuffle the data
 
-  if isinstance(validation_size, float):
-    validation_size = int(validation_size * images.shape[0])
+  # Test : Train : Validation
+  n = len(images)
+  test_size = int(test_size * images.shape[0])
+  validation_size = n - int(validation_size * images.shape[0])
 
-  validation_images = images[:validation_size]
-  validation_labels = labels[:validation_size]
-  validation_ids = ids[:validation_size]
-  validation_cls = cls[:validation_size]
+  test_images = images[:test_size]
+  test_labels = labels[:test_size]
+  test_ids = ids[:test_size]
+  test_cls = cls[:test_size]
 
-  train_images = images[validation_size:]
-  train_labels = labels[validation_size:]
-  train_ids = ids[validation_size:]
-  train_cls = cls[validation_size:]
+  train_images = images[test_size:validation_size]
+  train_labels = labels[test_size:validation_size]
+  train_ids = ids[test_size:validation_size]
+  train_cls = cls[test_size:validation_size]
+
+  validation_images = images[validation_size:]
+  validation_labels = labels[validation_size:]
+  validation_ids = ids[validation_size:]
+  validation_cls = cls[validation_size:]
 
   data_sets.train = DataSet(train_images, train_labels, train_ids, train_cls)
   data_sets.valid = DataSet(validation_images, validation_labels, validation_ids, validation_cls)
+  data_sets.test = DataSet(test_images, test_labels, test_ids, test_cls)
 
   return data_sets
-
-
-def read_test_set(test_path, image_size):
-  images, ids  = load_test(test_path, image_size)
-  return images, ids
